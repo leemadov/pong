@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+        }
+
+        canvas {
+            border: 2px solid #fff;
+        }
+
+        #score {
+            position: absolute;
+            color: #fff;
+            font-size: 16px;
+            top: 10px;
+            left: 10px;
+        }
+
+        #message {
+            position: absolute;
+            color: #fff;
+            font-size: 16px;
+            top: 30px;
+            left: 10px;
+        }
+
+        #pauseMenu {
+            display: none;
+            position: absolute;
+            color: #fff;
+            font-size: 20px;
+            text-align: center;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #resumeButton, #difficultyMenu, #speedMenu, #restartButton, #colorThemeMenu, #assistButton {
+            cursor: pointer;
+            color: #fff;
+            font-size: 16px;
+            background-color: #000;
+            border: 2px solid #fff;
+            padding: 5px 10px;
+            margin-top: 20px;
+            display: inline-block;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        #resumeButton:hover, #difficultyMenu:hover, #speedMenu:hover, #restartButton:hover, #colorThemeMenu:hover, #assistButton:hover {
+            background-color: #fff;
+            color: #000;
+        }
+
+        .colorThemeOption {
+            cursor: pointer;
+            padding: 5px;
+            margin: 5px;
+            border-radius: 5px;
+        }
+
+        #colorThemeOptions {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .colorThemeOption:hover {
+            background-color: #fff;
+            color: #000;
+        }
+    </style>
+    <title>Pong Game</title>
+</head>
+<body>
+    <canvas id="pongCanvas" width="800" height="400"></canvas>
+    <div id="score">Player: 0 | AI Bot: 0</div>
+    <div id="message"></div>
+    <div id="pauseMenu">
+        <div>Paused</div>
+        <div id="resumeButton">Resume</div>
+        <div id="difficultyMenu">Difficulty: Medium</div>
+        <div id="speedMenu">Speed: Medium</div>
+        <div id="assistButton">Assist: Off</div>
+        <div id="restartButton">Restart Game</div>
+        <div id="colorThemeMenu">Color Theme</div>
+        <div id="colorThemeOptions">
+            <div class="colorThemeOption" onclick="changeColorTheme('Default')">Default</div>
+            <div class="colorThemeOption" onclick="changeColorTheme('Dark')">Dark</div>
+            <div class="colorThemeOption" onclick="changeColorTheme('Light')">Light</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("pongCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+        const messageElement = document.getElementById("message");
+        const pauseMenu = document.getElementById("pauseMenu");
+        const resumeButton = document.getElementById("resumeButton");
+        const difficultyMenu = document.getElementById("difficultyMenu");
+        const speedMenu = document.getElementById("speedMenu");
+        const assistButton = document.getElementById("assistButton");
+        const restartButton = document.getElementById("restartButton");
+        const colorThemeMenu = document.getElementById("colorThemeMenu");
+        const colorThemeOptions = document.getElementById("colorThemeOptions");
+
+        // Paddle properties
+        const paddleWidth = 10, paddleHeight = 60;
+        let playerPaddleY = (canvas.height - paddleHeight) / 2;
+        let aiPaddleY = (canvas.height - paddleHeight) / 2;
+
+        // Ball properties
+        let ballX = canvas.width / 2, ballY = canvas.height / 2;
+        let ballSpeedX = 5, ballSpeedY = 2;
+        const ballTrail = [];
+
+        // Emoji message properties
+        let emojiMessage = "";
+
+        // Score variables
+        let playerScore = 0, aiScore = 0;
+
+        // AI message arrays
+        const aiPositiveMessages = [
+            "Keep going!",
+            "You are good!",
+            "Well done!",
+            "Impressive!",
+            "Great move!",
+            "You got skills!",
+            "Fantastic!",
+            "Nice shot!",
+            "Bravo!",
+            "You're on fire!",
+            "You're improving!",
+            "Amazing!",
+            "Excellent play!",
+            "Outstanding!",
+            "Good job!",
+            "You're unstoppable!",
+            "Incredible!",
+            "Well played!",
+            "You're a pro!",
+            "Superb!",
+            "Keep it up!",
+            "Smooth moves!",
+            "Terrific!",
+            "Exceptional!",
+            "Astonishing!",
+            "Brilliant!",
+            "Way to go!",
+            "Unbelievable!",
+            "You're a star!",
+            "Perfection!",
+            "Masterful!",
+            "Genius!",
+            "Wondrous!",
+            "Remarkable!",
+            "Stellar!",
+            "Spectacular!",
+            "Phenomenal!",
+            "Magnificent!",
+            "You're on the right track!",
+            "Every little step counts!",
+            "You're making a difference!",
+            "Your effort is paying off!",
+            "You're getting better every day!",
+            "You're a source of inspiration!",
+            "You're a shining star!",
+            "Believe in your abilities!",
+            "You've got the magic touch!",
+            "Success is in your DNA!"
+        ];
+
+        // Game state
+        let isPaused = false;
+        let difficultyLevel = "Medium";
+        let ballSpeedLevel = "Medium";
+        let assistEnabled = false;
+
+        function drawPaddle(x, y) {
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(x, y, paddleWidth, paddleHeight);
+        }
+
+        function drawBall() {
+            // Draw the ball with motion blur
+            for (let i = 0; i < ballTrail.length; i++) {
+                const alpha = 1 - i / ballTrail.length;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(ballTrail[i].x, ballTrail[i].y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = "#fff";
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            // Reset global alpha
+            ctx.globalAlpha = 1;
+        }
+
+        function draw() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw paddles and ball
+            drawPaddle(0, playerPaddleY);
+            drawPaddle(canvas.width - paddleWidth, aiPaddleY);
+            drawBall();
+
+            // Update ball position
+            if (!isPaused) {
+                ballX += ballSpeedX;
+                ballY += ballSpeedY;
+
+                // Save ball position for motion blur
+                ballTrail.unshift({ x: ballX, y: ballY });
+                if (ballTrail.length > 10) {
+                    ballTrail.pop();
+                }
+            }
+
+            // Ball collision with top and bottom walls
+            if (ballY - 8 < 0 || ballY + 8 > canvas.height) {
+                ballSpeedY = -ballSpeedY;
+            }
+
+            // Ball collision with paddles
+            if (
+                (ballX - 8 < paddleWidth && ballY > playerPaddleY && ballY < playerPaddleY + paddleHeight) ||
+                (ballX + 8 > canvas.width - paddleWidth && ballY > aiPaddleY && ballY < aiPaddleY + paddleHeight)
+            ) {
+                ballSpeedX = -ballSpeedX;
+
+                // Update emoji message when the ball hits the paddle
+                emojiMessage = "🎉";
+
+                // Display a random AI message
+                displayRandomAiMessage();
+            } else {
+                emojiMessage = ""; // Clear the emoji message
+            }
+
+            // AI Paddle movement with assistance option
+            const aiPaddleCenter = aiPaddleY + paddleHeight / 2;
+            if (assistEnabled && Math.random() < 0.1) {
+                // Intentional mistake to assist the player
+                aiPaddleY = ballY - paddleHeight / 2;
+            } else {
+                if (aiPaddleCenter < ballY - 3) {
+                    aiPaddleY += getAiPaddleSpeed();
+                } else if (aiPaddleCenter > ballY + 3) {
+                    aiPaddleY -= getAiPaddleSpeed();
+                }
+            }
+
+            // Update scores
+            if (ballX < 0) {
+                aiScore++;
+                resetBall();
+            } else if (ballX > canvas.width) {
+                playerScore++;
+                resetBall();
+            }
+
+            // Display scores
+            scoreElement.textContent = `Player: ${playerScore} | AI Bot: ${aiScore}`;
+
+            // Display emoji message
+            ctx.font = "20px Arial";
+            ctx.fillStyle = "#fff";
+            ctx.fillText(emojiMessage, canvas.width / 2 - 10, canvas.height / 2);
+
+            // Draw pause menu if the game is paused
+            if (isPaused) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Draw difficulty and speed settings in the pause menu
+            difficultyMenu.textContent = `Difficulty: ${difficultyLevel}`;
+            speedMenu.textContent = `Speed: ${ballSpeedLevel}`;
+            assistButton.textContent = `Assist: ${assistEnabled ? "On" : "Off"}`;
+
+            requestAnimationFrame(draw);
+        }
+
+        function resetBall() {
+            ballX = canvas.width / 2;
+            ballY = canvas.height / 2;
+
+            // Clear the AI message
+            messageElement.textContent = "";
+
+            // Clear ball trail for motion blur
+            ballTrail.length = 0;
+        }
+
+        function displayRandomAiMessage() {
+            const randomIndex = Math.floor(Math.random() * aiPositiveMessages.length);
+            messageElement.textContent = aiPositiveMessages[randomIndex];
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+
+            // Display or hide pause menu
+            pauseMenu.style.display = isPaused ? "block" : "none";
+        }
+
+        function changeColorTheme(theme) {
+            // Add logic to change color theme based on the selected theme
+            document.body.style.backgroundColor = theme === "Dark" ? "#1a1a1a" : (theme === "Light" ? "#f4f4f4" : "#000");
+            document.body.style.color = theme === "Dark" ? "#fff" : "#000";
+            canvas.style.borderColor = theme === "Dark" ? "#fff" : "#000";
+            pauseMenu.style.backgroundColor = theme === "Dark" ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.8)";
+            // Add more elements to be themed accordingly
+
+            // Hide color theme options after selection
+            colorThemeOptions.style.display = "none";
+        }
+
+        function changeAssistStatus() {
+            assistEnabled = !assistEnabled;
+        }
+
+        // Listen for mouse movement to control the player's paddle
+        canvas.addEventListener("mousemove", (e) => {
+            const mouseY = e.clientY - canvas.getBoundingClientRect().top;
+            playerPaddleY = mouseY - paddleHeight / 2;
+        });
+
+        // Listen for the "Esc" key to toggle pause
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                togglePause();
+            }
+        });
+
+        // Resume the game when the resume button is clicked
+        resumeButton.addEventListener("click", () => {
+            togglePause();
+        });
+
+        // Restart the game when the restart button is clicked
+        restartButton.addEventListener("click", () => {
+            playerScore = 0;
+            aiScore = 0;
+            resetBall();
+            togglePause();
+        });
+
+        // Change difficulty when clicking the difficulty menu
+        difficultyMenu.addEventListener("click", () => {
+            switch (difficultyLevel) {
+                case "Easy":
+                    difficultyLevel = "Medium";
+                    break;
+                case "Medium":
+                    difficultyLevel = "Hard";
+                    break;
+                case "Hard":
+                    difficultyLevel = "Easy";
+                    break;
+                default:
+                    break;
+            }
+        });
+
+        // Function to get AI paddle speed based on difficulty
+        function getAiPaddleSpeed() {
+            switch (difficultyLevel) {
+                case "Easy":
+                    return 2;
+                case "Medium":
+                    return 3;
+                case "Hard":
+                    return 5;
+                default:
+                    return 3;
+            }
+        }
+
+        // Open color theme options when clicking the color theme menu
+        colorThemeMenu.addEventListener("click", () => {
+            colorThemeOptions.style.display = "block";
+        });
+
+        // Toggle assistance when clicking the assist button
+        assistButton.addEventListener("click", () => {
+            changeAssistStatus();
+        });
+
+        draw();
+    </script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+</body>
+</html>
