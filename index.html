@@ -97,6 +97,7 @@
         <div id="assistButton">Assist: Off</div>
         <div id="restartButton">Restart Game</div>
         <div id="colorThemeMenu">Color Theme</div>
+        <div id="speedMenu">AI Paddle Speed: Medium</div>
         <div id="colorThemeOptions">
             <div class="colorThemeOption" onclick="changeColorTheme('Default')">Default</div>
             <div class="colorThemeOption" onclick="changeColorTheme('Dark')">Dark</div>
@@ -260,9 +261,9 @@
                 // Intentional mistake to assist the player
                 aiPaddleY = ballY - paddleHeight / 2;
             } else {
-                if (aiPaddleCenter < ballY - 3) {
+                if (aiPaddleCenter < ballY - 2) {
                     aiPaddleY += getAiPaddleSpeed();
-                } else if (aiPaddleCenter > ballY + 3) {
+                } else if (aiPaddleCenter > ballY + 2) {
                     aiPaddleY -= getAiPaddleSpeed();
                 }
             }
@@ -401,6 +402,60 @@
         // Toggle assistance when clicking the assist button
         assistButton.addEventListener("click", () => {
             changeAssistStatus();
+        });
+
+        function getAiPaddleSpeed() {
+            // Adjust the speed values to make the AI paddle move more slowly
+            switch (difficultyLevel) {
+                case "Easy":
+                    return 1; // Slower speed for Easy difficulty
+                case "Medium":
+                    return 2; // Slower speed for Medium difficulty
+                case "Hard":
+                    return 3; // Slower speed for Hard difficulty
+                default:
+                    return 2;
+            }
+        }
+
+        // Function to update AI paddle speed option
+        function updateAiPaddleSpeedOption() {
+            switch (difficultyLevel) {
+                case "Easy":
+                    ballSpeedLevel = "Slow";
+                    break;
+                case "Medium":
+                    ballSpeedLevel = "Medium";
+                    break;
+                case "Hard":
+                    ballSpeedLevel = "Fast";
+                    break;
+                default:
+                    ballSpeedLevel = "Medium";
+                    break;
+            }
+        }
+
+        // ... (same as before) ...
+
+        // Change difficulty and AI paddle speed when clicking the difficulty menu
+        difficultyMenu.addEventListener("click", () => {
+            switch (difficultyLevel) {
+                case "Easy":
+                    difficultyLevel = "Medium";
+                    break;
+                case "Medium":
+                    difficultyLevel = "Hard";
+                    break;
+                case "Hard":
+                    difficultyLevel = "Easy";
+                    break;
+                default:
+                    break;
+            }
+
+            // Update AI paddle speed option
+            updateAiPaddleSpeedOption();
         });
 
         draw();
